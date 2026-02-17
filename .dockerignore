@@ -1,0 +1,13 @@
+.venv
+__pycache__
+*.pyc
+.git
+.env
+*.db
+data/*.db
+Наре проект
+*.xlsx
+*.pdf
+.cursor
+*.md
+!README.md

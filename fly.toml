@@ -1,0 +1,12 @@
+# Fly.io — воркер без HTTP (Telegram long polling)
+# Имя приложения можно поменять при первом fly launch
+app = "binc-lexa"
+
+[build]
+
+# Сохранять SQLite между перезапусками (volume создаётся при первом deploy)
+[mounts]
+source = "binc_lexa_data"
+destination = "/app/data"
+
+# Нет http_service — это фоновый воркер, не веб-сервер

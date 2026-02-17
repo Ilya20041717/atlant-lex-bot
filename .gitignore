@@ -1,0 +1,32 @@
+# Секреты и данные
+.env
+*.db
+data/*.db
+data/
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# IDE и ОС
+.idea/
+.vscode/
+.cursor/
+.DS_Store
+*.swp
+*.swo
+
+# Логи
+*.log
+logs/
+
+# Опционально: не пушить большие/чужие проекты (раскомментируйте при необходимости)
+# Наре проект/

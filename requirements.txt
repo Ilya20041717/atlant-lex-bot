@@ -1,0 +1,7 @@
+aiogram
+SQLAlchemy
+aiosqlite
+python-dotenv
+greenlet
+openai>=1.0.0
+httpx
