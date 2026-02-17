@@ -23,7 +23,9 @@
    git push -u origin main
    ```
 
-Дальше выберите **один** способ: Railway или Fly.io.
+Дальше выберите **один** способ: **Railway** (проще всего), **Vercel** (бесплатно, нужна БД Neon) или Fly.io.
+
+**Одной командой:** из корня проекта запустите `./deploy.sh` — скрипт сделает коммит, push (если настроен remote) и подскажет следующие шаги.
 
 ---
 
@@ -75,6 +77,26 @@
 7. Проверка логов: `fly logs`. Бот работает по `t.me/ИМЯ_ВАШЕГО_БОТА`.
 
 **Обновление:** после изменений в коде — `git push`, затем в папке проекта: `fly deploy`.
+
+---
+
+## Вариант C: Vercel (бесплатно, webhook)
+
+На Vercel бот работает по **webhook**: Telegram шлёт обновления на ваш URL. Нужна внешняя БД (SQLite на Vercel не сохраняется) — бесплатно подойдёт **Neon** (Postgres).
+
+1. **БД:** зайдите на [neon.tech](https://neon.tech), создайте аккаунт и проект. Скопируйте connection string (вид `postgresql://user:pass@host/dbname`). В переменных Vercel он должен быть как **postgresql+asyncpg://...** (замените в начале `postgresql://` на `postgresql+asyncpg://`).
+2. **Деплой:** на [vercel.com](https://vercel.com) → **Add New** → **Project** → импортируйте репозиторий с ботом. Root Directory оставьте корнем. Deploy.
+3. **Переменные:** в настройках проекта → **Environment Variables** добавьте:
+   - `BOT_TOKEN` — токен от @BotFather
+   - `DB_URL` — строка Neon в формате `postgresql+asyncpg://user:pass@host/dbname?sslmode=require`  
+   При желании добавьте остальное из `.env` (START_IMAGE_FILE_ID, AGENCY_NAME и т.д.).
+4. **Webhook:** после деплоя узнайте URL проекта (например `https://binc-lexa-xxx.vercel.app`). Один раз выполните (подставьте токен и URL):
+   ```bash
+   curl "https://api.telegram.org/bot<ВАШ_BOT_TOKEN>/setWebhook?url=https://ВАШ-ПРОЕКТ.vercel.app/api/webhook"
+   ```
+   В ответ должно быть `"ok":true`. Готово: бот отвечает по `t.me/ВашБот`.
+
+**Ограничение:** FSM (состояние диалога) хранится в памяти серверной функции — при «холодном» старте может сброситься. Для стабильных длинных сценариев лучше Railway или Fly.io.
 
 ---
 

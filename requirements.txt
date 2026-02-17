@@ -1,6 +1,7 @@
 aiogram
 SQLAlchemy
 aiosqlite
+asyncpg
 python-dotenv
 greenlet
 openai>=1.0.0

@@ -36,7 +36,9 @@ def get_settings() -> Settings:
     bot_token = os.getenv("BOT_TOKEN")
     if not bot_token:
         raise RuntimeError("BOT_TOKEN is required")
-    db_url = os.getenv("DB_URL", "sqlite+aiosqlite:///./data/app.db")
+    db_url = os.getenv("DB_URL") or os.getenv("DATABASE_URL") or "sqlite+aiosqlite:///./data/app.db"
+    if db_url.startswith("postgresql://"):
+        db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
     agency_name = os.getenv(
         "AGENCY_NAME",
         "Агентство по банкротству физических лиц",
