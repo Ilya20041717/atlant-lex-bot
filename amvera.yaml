@@ -10,6 +10,6 @@ build:
   useCache: true
 
 run:
-  # PYTHONPATH=/app чтобы интерпретатор видел пакет app (Amvera монтирует артефакты в /app)
-  command: PYTHONPATH=/app python -m app.main
+  # Переход в /app и запуск оттуда (на Amvera артефакты в /app)
+  command: sh -c "cd /app && PYTHONPATH=. python -m app.main"
   persistenceMount: /data
