@@ -190,8 +190,14 @@ async def cabinet_enter_name(message, state: FSMContext):
     await set_screen(message, text, reply_markup=client_submenu(), parse_mode="Markdown", remove_prev=False)
 
 
+# ——— Связаться с менеджером — сразу контакт и номер (без опросника)
+@router.message(F.text == Buttons.CONTACT_MANAGER)
+async def contact_manager(message):
+    await set_screen(message, CONTACT_MANAGER, reply_markup=main_menu(), parse_mode="Markdown")
+
+
 # ——— Оставить заявку (сначала опросник, затем контакт) ———
-@router.message(F.text.in_([Buttons.REQUEST, Buttons.CONTACT_MANAGER]))
+@router.message(F.text == Buttons.REQUEST)
 async def request_start(message, state: FSMContext):
     await state.set_state(RequestLead.debt_amount)
     await set_screen(
