@@ -15,6 +15,10 @@ class Settings:
     default_org_id: int
     delete_message_after_seconds: int
     openai_api_key: str  # пустая строка = ИИ отключён
+    openai_model: str
+    openai_max_tokens: int
+    openai_assistant_id: str  # если задан — бот использует Assistants API (файлы, база знаний)
+    ai_system_prompt_extra: str  # доп. инструкции к системному промпту (через .env)
     deepseek_api_key: str
     deepseek_base_url: str
     deepseek_model: str
@@ -46,6 +50,10 @@ def get_settings() -> Settings:
     default_org_id = int(os.getenv("DEFAULT_ORG_ID", "1"))
     delete_after = int(os.getenv("DELETE_MESSAGE_AFTER_SECONDS", "60"))
     openai_api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    openai_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini").strip()
+    openai_max_tokens = int(os.getenv("OPENAI_MAX_TOKENS", "500"))
+    openai_assistant_id = os.getenv("OPENAI_ASSISTANT_ID", "").strip()
+    ai_system_prompt_extra = os.getenv("AI_SYSTEM_PROMPT_EXTRA", "").strip()
     deepseek_api_key = os.getenv("DEEPSEEK_API_KEY", "").strip()
     deepseek_base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1").strip()
     deepseek_model = os.getenv("DEEPSEEK_MODEL", "deepseek-chat").strip()
@@ -69,6 +77,10 @@ def get_settings() -> Settings:
         default_org_id=default_org_id,
         delete_message_after_seconds=delete_after,
         openai_api_key=openai_api_key,
+        openai_model=openai_model,
+        openai_max_tokens=openai_max_tokens,
+        openai_assistant_id=openai_assistant_id,
+        ai_system_prompt_extra=ai_system_prompt_extra,
         deepseek_api_key=deepseek_api_key,
         deepseek_base_url=deepseek_base_url,
         deepseek_model=deepseek_model,

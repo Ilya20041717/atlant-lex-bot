@@ -394,7 +394,7 @@ async def ask_ai_cancel(message, state: FSMContext):
 @router.message(StateFilter(AskAI.text), F.text)
 async def ask_ai_reply(message, state: FSMContext):
     await state.clear()
-    reply = await ask_ai(message.text or "")
+    reply = await ask_ai(message.text or "", user_id=message.from_user.id if message.from_user else None)
     markup = client_submenu() if message.chat.id in _cabinet_users else main_menu()
     if reply:
         try:
