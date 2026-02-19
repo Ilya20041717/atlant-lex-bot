@@ -1,0 +1,11 @@
+# Минимальный конфиг для Docker (сборка и запуск из Dockerfile)
+meta:
+  environment: docker
+  toolchain:
+    name: docker
+
+build:
+  dockerfile: Dockerfile
+
+run:
+  persistenceMount: /data
