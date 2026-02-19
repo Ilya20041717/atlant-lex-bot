@@ -1,0 +1,13 @@
+# Конфигурация Amvera Cloud для Telegram-бота (Python)
+# Документация: https://docs.amvera.ru/ , https://amvera.ru/doc-configfile
+
+meta:
+  environment: python
+
+build:
+  # Установка зависимостей из requirements.txt
+  args: ""
+
+run:
+  # Запуск бота (long polling)
+  command: python -m app.main
