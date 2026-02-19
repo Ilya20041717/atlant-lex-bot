@@ -12,6 +12,8 @@ async def save_lead_survey(
     income: int | None,
     assets: str,
     region: str,
+    contact_name: str | None = None,
+    contact_phone: str | None = None,
 ) -> None:
     await upsert_lead_profile(
         session=session,
@@ -22,4 +24,6 @@ async def save_lead_survey(
         income=income,
         assets=assets,
         region=region,
+        contact_name=contact_name,
+        contact_phone=contact_phone,
     )

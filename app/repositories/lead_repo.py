@@ -13,6 +13,8 @@ async def upsert_lead_profile(
     income: int | None,
     assets: str,
     region: str,
+    contact_name: str | None = None,
+    contact_phone: str | None = None,
 ) -> LeadProfile:
     result = await session.execute(
         select(LeadProfile).where(LeadProfile.user_id == user_id)
@@ -25,6 +27,10 @@ async def upsert_lead_profile(
         profile.income = income
         profile.assets = assets
         profile.region = region
+        if contact_name is not None:
+            profile.contact_name = contact_name
+        if contact_phone is not None:
+            profile.contact_phone = contact_phone
         return profile
     profile = LeadProfile(
         user_id=user_id,
@@ -34,6 +40,8 @@ async def upsert_lead_profile(
         income=income,
         assets=assets,
         region=region,
+        contact_name=contact_name,
+        contact_phone=contact_phone,
     )
     session.add(profile)
     await session.flush()

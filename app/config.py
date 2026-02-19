@@ -34,6 +34,7 @@ class Settings:
     pau_password: str
     pau_category: str  # customer|manager|partner|viewer
     pau_default_court_name: str
+    admin_tg_ids: tuple[int, ...]  # кому присылать заявки из опросника (через запятую в .env)
 
 
 def get_settings() -> Settings:
@@ -69,6 +70,8 @@ def get_settings() -> Settings:
     pau_password = os.getenv("PAU_PASSWORD", "").strip()
     pau_category = os.getenv("PAU_CATEGORY", "customer").strip().lower()
     pau_default_court_name = os.getenv("PAU_DEFAULT_COURT_NAME", "").strip()
+    admin_tg_ids_raw = os.getenv("ADMIN_TG_IDS", "654078115").strip()
+    admin_tg_ids = tuple(int(x.strip()) for x in admin_tg_ids_raw.split(",") if x.strip().isdigit())
 
     return Settings(
         bot_token=bot_token,
@@ -94,6 +97,7 @@ def get_settings() -> Settings:
         pau_password=pau_password,
         pau_category=pau_category,
         pau_default_court_name=pau_default_court_name,
+        admin_tg_ids=admin_tg_ids,
     )
 
 

@@ -6,6 +6,7 @@ from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 
+from app.config import settings
 from app.constants import Buttons, FAQ_NARE
 from app.content.premium import (
     ASK_AI_PROMPT,
@@ -26,6 +27,14 @@ from app.content.premium import (
     REQUEST_ASK_NAME,
     REQUEST_ASK_PHONE,
     REQUEST_PHONE_INVALID,
+    SURVEY_ASSETS,
+    SURVEY_CREDITORS_COUNT,
+    SURVEY_DEBT_AMOUNT,
+    SURVEY_INCOME,
+    SURVEY_INTRO,
+    SURVEY_OVERDUE_MONTHS,
+    SURVEY_REGION,
+    SURVEY_THEN_CONTACT,
     UPLOAD_DOCS_PROMPT,
     UPLOAD_DOCS_RECEIVED,
     BACK_TO_MENU,
@@ -37,8 +46,25 @@ from app.content.premium import (
     PAYMENT_DEMO_REQUISITES,
 )
 from app.keyboards.inline import pay_inline
-from app.keyboards.menus import back_only, client_submenu, faq_menu, main_menu, phone_request_keyboard
+from app.keyboards.menus import (
+    back_only,
+    client_submenu,
+    faq_menu,
+    main_menu,
+    phone_request_keyboard,
+    survey_assets_keyboard,
+    survey_creditors_keyboard,
+    survey_debt_keyboard,
+    survey_income_keyboard,
+    survey_overdue_keyboard,
+    survey_region_keyboard,
+    SURVEY_CREDITORS_VALUES,
+    SURVEY_DEBT_VALUES,
+    SURVEY_INCOME_VALUES,
+    SURVEY_OVERDUE_VALUES,
+)
 from app.services.ai_service import ask_ai
+from app.services.lead_service import save_lead_survey
 from app.services.pau_service import (
     get_pau_config,
     pau_download_procedure_info,
@@ -46,6 +72,7 @@ from app.services.pau_service import (
     pau_registrate_bankruptcy_petition,
 )
 from app.states.nare import AskAI, AskQuestion, CabinetCase, CabinetPhone, RequestLead
+from app.utils.parsing import parse_int
 from app.utils.screen import set_screen
 
 
@@ -60,11 +87,6 @@ _pau_enabled = get_pau_config() is not None
 async def show_main(message, state: FSMContext):
     await state.clear()
     await set_screen(message, BACK_TO_MENU, reply_markup=main_menu())
-
-
-@router.message(F.text == Buttons.CONTACT_MANAGER)
-async def contact_manager(message):
-    await set_screen(message, CONTACT_MANAGER, reply_markup=main_menu(), parse_mode="Markdown")
 
 
 @router.message(F.text == Buttons.FAQ)
@@ -168,30 +190,128 @@ async def cabinet_enter_name(message, state: FSMContext):
     await set_screen(message, text, reply_markup=client_submenu(), parse_mode="Markdown", remove_prev=False)
 
 
-# ——— Оставить заявку ———
-@router.message(F.text == Buttons.REQUEST)
+# ——— Оставить заявку (сначала опросник, затем контакт) ———
+@router.message(F.text.in_([Buttons.REQUEST, Buttons.CONTACT_MANAGER]))
 async def request_start(message, state: FSMContext):
+    await state.set_state(RequestLead.debt_amount)
+    await set_screen(
+        message,
+        SURVEY_INTRO + "\n\n" + SURVEY_DEBT_AMOUNT,
+        reply_markup=survey_debt_keyboard(),
+    )
+
+
+@router.message(StateFilter(RequestLead.debt_amount), F.text == Buttons.BACK)
+async def request_cancel_survey(message, state: FSMContext):
+    await state.clear()
+    await set_screen(message, BACK_TO_MENU, reply_markup=main_menu())
+
+
+@router.message(StateFilter(RequestLead.debt_amount), F.text)
+async def request_debt_amount(message, state: FSMContext):
+    value = SURVEY_DEBT_VALUES.get(message.text.strip()) if message.text else None
+    if value is None:
+        value = parse_int(message.text)
+    if value is None:
+        await set_screen(message, "Введите сумму числом или выберите вариант выше.", reply_markup=survey_debt_keyboard())
+        return
+    await state.update_data(debt_amount=value)
+    await state.set_state(RequestLead.creditors_count)
+    await set_screen(message, SURVEY_CREDITORS_COUNT, reply_markup=survey_creditors_keyboard())
+
+
+@router.message(StateFilter(RequestLead.creditors_count), F.text == Buttons.BACK)
+async def request_back_creditors(message, state: FSMContext):
+    await state.set_state(RequestLead.debt_amount)
+    await set_screen(message, SURVEY_DEBT_AMOUNT, reply_markup=survey_debt_keyboard())
+
+
+@router.message(StateFilter(RequestLead.creditors_count), F.text)
+async def request_creditors_count(message, state: FSMContext):
+    value = SURVEY_CREDITORS_VALUES.get(message.text.strip()) if message.text else None
+    if value is None:
+        value = parse_int(message.text)
+    if value is None:
+        await set_screen(message, "Введите количество числом или выберите вариант выше.", reply_markup=survey_creditors_keyboard())
+        return
+    await state.update_data(creditors_count=value)
+    await state.set_state(RequestLead.overdue_months)
+    await set_screen(message, SURVEY_OVERDUE_MONTHS, reply_markup=survey_overdue_keyboard())
+
+
+@router.message(StateFilter(RequestLead.overdue_months), F.text == Buttons.BACK)
+async def request_back_overdue(message, state: FSMContext):
+    await state.set_state(RequestLead.creditors_count)
+    await set_screen(message, SURVEY_CREDITORS_COUNT, reply_markup=survey_creditors_keyboard())
+
+
+@router.message(StateFilter(RequestLead.overdue_months), F.text)
+async def request_overdue_months(message, state: FSMContext):
+    value = SURVEY_OVERDUE_VALUES.get(message.text.strip()) if message.text else None
+    if value is None:
+        value = parse_int(message.text)
+    if value is None:
+        await set_screen(message, "Введите количество месяцев числом или выберите вариант выше.", reply_markup=survey_overdue_keyboard())
+        return
+    await state.update_data(overdue_months=value)
+    await state.set_state(RequestLead.income)
+    await set_screen(message, SURVEY_INCOME, reply_markup=survey_income_keyboard())
+
+
+@router.message(StateFilter(RequestLead.income), F.text == Buttons.BACK)
+async def request_back_income(message, state: FSMContext):
+    await state.set_state(RequestLead.overdue_months)
+    await set_screen(message, SURVEY_OVERDUE_MONTHS, reply_markup=survey_overdue_keyboard())
+
+
+@router.message(StateFilter(RequestLead.income), F.text)
+async def request_income(message, state: FSMContext):
+    value = SURVEY_INCOME_VALUES.get(message.text.strip()) if message.text else None
+    if value is None:
+        value = parse_int(message.text)
+    if value is None:
+        await set_screen(message, "Введите доход числом или выберите вариант выше.", reply_markup=survey_income_keyboard())
+        return
+    await state.update_data(income=value)
+    await state.set_state(RequestLead.assets)
+    await set_screen(message, SURVEY_ASSETS, reply_markup=survey_assets_keyboard())
+
+
+@router.message(StateFilter(RequestLead.assets), F.text == Buttons.BACK)
+async def request_back_assets(message, state: FSMContext):
+    await state.set_state(RequestLead.income)
+    await set_screen(message, SURVEY_INCOME, reply_markup=survey_income_keyboard())
+
+
+@router.message(StateFilter(RequestLead.assets), F.text)
+async def request_assets(message, state: FSMContext):
+    await state.update_data(assets=(message.text or "").strip())
+    await state.set_state(RequestLead.region)
+    await set_screen(message, SURVEY_REGION, reply_markup=survey_region_keyboard())
+
+
+@router.message(StateFilter(RequestLead.region), F.text == Buttons.BACK)
+async def request_back_region(message, state: FSMContext):
+    await state.set_state(RequestLead.assets)
+    await set_screen(message, SURVEY_ASSETS, reply_markup=survey_assets_keyboard())
+
+
+@router.message(StateFilter(RequestLead.region), F.text)
+async def request_region(message, state: FSMContext):
+    await state.update_data(region=(message.text or "").strip())
     await state.set_state(RequestLead.name)
     await set_screen(message, REQUEST_ASK_NAME, reply_markup=back_only())
 
 
 @router.message(StateFilter(RequestLead.name), F.text == Buttons.BACK)
 async def request_cancel_name(message, state: FSMContext):
-    await state.clear()
-    await set_screen(message, BACK_TO_MENU, reply_markup=main_menu())
+    await state.set_state(RequestLead.region)
+    await set_screen(message, SURVEY_REGION, reply_markup=survey_region_keyboard())
 
 
 @router.message(StateFilter(RequestLead.name), F.text)
 async def request_phone_step(message, state: FSMContext):
     name = message.text.strip()
-    chat_id = message.chat.id
-    if chat_id in _stored_phones:
-        _stored_phones.pop(chat_id, None)
-        if _pau_enabled:
-            await pau_registrate_bankruptcy_petition(debtor_name=name)
-        await state.clear()
-        await set_screen(message, REQUEST_ACCEPTED, reply_markup=main_menu(), parse_mode="Markdown")
-        return
     await state.update_data(name=name)
     await state.set_state(RequestLead.phone)
     await set_screen(message, REQUEST_ASK_PHONE, reply_markup=phone_request_keyboard())
@@ -199,38 +319,87 @@ async def request_phone_step(message, state: FSMContext):
 
 @router.message(StateFilter(RequestLead.phone), F.text == Buttons.BACK)
 async def request_cancel_phone(message, state: FSMContext):
-    await state.clear()
-    await set_screen(message, BACK_TO_MENU, reply_markup=main_menu())
+    await state.set_state(RequestLead.name)
+    await set_screen(message, REQUEST_ASK_NAME, reply_markup=back_only())
+
+
+def _format_lead_for_admin(data: dict, name: str, phone: str) -> str:
+    parts = [
+        "📋 *Новая заявка*",
+        "",
+        f"*Имя:* {name or '—'}",
+        f"*Телефон:* {phone or '—'}",
+        f"*Сумма долга:* {data.get('debt_amount') or '—'} ₽",
+        f"*Кредиторов:* {data.get('creditors_count') or '—'}",
+        f"*Просрочка:* {data.get('overdue_months') or '—'} мес.",
+        f"*Доход в месяц:* {data.get('income') or '—'} ₽",
+        f"*Имущество:* {data.get('assets') or '—'}",
+        f"*Регион:* {data.get('region') or '—'}",
+    ]
+    return "\n".join(parts)
+
+
+def _norm_phone(text: str) -> str:
+    return re.sub(r"\D", "", text or "")
 
 
 @router.message(StateFilter(RequestLead.phone), F.contact)
-async def request_done_contact(message, state: FSMContext):
+async def request_done_contact(message, state: FSMContext, session, db_user):
     data = await state.get_data()
     name = (data.get("name") or "").strip() or "Клиент"
-    if _pau_enabled:
-        await pau_registrate_bankruptcy_petition(debtor_name=name)
+    phone = _norm_phone((message.contact.phone_number or "") if message.contact else "") or ""
     try:
         await message.delete()
     except Exception:
         pass
-    await state.clear()
-    await set_screen(message, REQUEST_ACCEPTED, reply_markup=main_menu(), parse_mode="Markdown")
+    await _save_request_and_finish(message, state, session, db_user, name, phone)
 
 
 @router.message(StateFilter(RequestLead.phone), F.text)
-async def request_done_text(message, state: FSMContext):
-    phone = re.sub(r"\D", "", message.text or "")
+async def request_done_text(message, state: FSMContext, session, db_user):
+    phone = _norm_phone(message.text or "")
     if len(phone) < 10 or len(phone) > 11:
         await set_screen(message, REQUEST_PHONE_INVALID, reply_markup=phone_request_keyboard())
         return
     data = await state.get_data()
     name = (data.get("name") or "").strip() or "Клиент"
-    if _pau_enabled:
-        await pau_registrate_bankruptcy_petition(debtor_name=name)
     try:
         await message.delete()
     except Exception:
         pass
+    await _save_request_and_finish(message, state, session, db_user, name, phone)
+
+
+async def _save_request_and_finish(message, state: FSMContext, session, db_user, name: str, phone: str):
+    data = await state.get_data()
+    # Пока только для вида: сохраняем в локальную БД бота, в CRM/ПАУ никуда не отправляем
+    await save_lead_survey(
+        session=session,
+        user_id=db_user.id,
+        debt_amount=data.get("debt_amount"),
+        creditors_count=data.get("creditors_count"),
+        overdue_months=data.get("overdue_months"),
+        income=data.get("income"),
+        assets=(data.get("assets") or ""),
+        region=(data.get("region") or ""),
+        contact_name=name or None,
+        contact_phone=phone or None,
+    )
+    # Уведомление админу в этом же боте
+    if settings.admin_tg_ids:
+        admin_text = _format_lead_for_admin(data, name, phone)
+        for admin_id in settings.admin_tg_ids:
+            try:
+                await message.bot.send_message(
+                    admin_id,
+                    admin_text,
+                    parse_mode="Markdown",
+                )
+            except Exception:
+                pass
+    # Отправка в ПАУ/CRM отключена — включить, когда будет нужно
+    # if _pau_enabled:
+    #     await pau_registrate_bankruptcy_petition(debtor_name=name)
     await state.clear()
     await set_screen(message, REQUEST_ACCEPTED, reply_markup=main_menu(), parse_mode="Markdown")
 

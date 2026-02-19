@@ -53,6 +53,8 @@ class LeadProfile(Base):
     income = Column(Numeric(12, 2))
     assets = Column(Text)
     region = Column(String(120))
+    contact_name = Column(String(255))
+    contact_phone = Column(String(32))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

@@ -1,6 +1,6 @@
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import declarative_base
-from sqlalchemy import select
 
 from app.config import settings
 from app.content.stages import STAGES
@@ -16,11 +16,21 @@ async def init_db() -> None:
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await _migrate_lead_profile_contacts(conn)
 
     async with SessionLocal() as session:
         await _ensure_default_org(session)
         await _seed_stages(session)
         await session.commit()
+
+
+async def _migrate_lead_profile_contacts(conn) -> None:
+    """Добавить колонки contact_name, contact_phone в lead_profiles при необходимости."""
+    for col in ("contact_name", "contact_phone"):
+        try:
+            await conn.execute(text(f"ALTER TABLE lead_profiles ADD COLUMN {col} TEXT"))
+        except Exception:
+            pass
 
 
 async def _ensure_default_org(session: AsyncSession) -> None:
